@@ -3,6 +3,24 @@
 ##################################################
 #
 # Backup from LVM snapshots.
+# 
+# Set options here
+####################
+# 
+# Where to backup to.
+dest="/var/backups/server"
+# LVM volume group name.
+vg="ubuntu-vg"
+# Where to mount LVM snapshots.
+snap_mount="/mnt/snapshot"
+# Where to store database backups.
+db_backups="/var/backups/databases"
+# What to backup.
+backup_files="$db_backups /etc/apache2/apache2.conf /etc/apache2/sites-available /etc/dhcp/dhclient.conf /etc/hosts /etc/init.d/noip2 /etc/network/interfaces /etc/systemd/logind.conf /etc/wpa_supplicant/wpa_supplicant.conf /home/adrian /var/lib/quassel /var/log/quassel /var/www/owncloud"
+mysql_databases="owncloud"
+# MySQL parameters.
+mysql_user="root"
+mysql_password="Really secure password that no one will ever guess!"
 #
 ##################################################
 
@@ -12,6 +30,10 @@ if [ "$(id -u)" != "0" ]; then
   exit 1
 fi
 
+# Get the date and start logging.
+date=$(date +%F_%H-%M-%S)
+echo "\n  Starting backup at $date"
+
 # Determine GFS mode (1) or simple mode (0).
 mode=0
 if [ $# -gt 0 ]; then
@@ -19,26 +41,6 @@ if [ $# -gt 0 ]; then
     mode=1
   fi
 fi
-
-# Where to backup to.
-dest="/var/backups/server"
-
-# LVM volume group name.
-vg="ubuntu-vg"
-
-# Where to mount LVM snapshots.
-snap_mount="/mnt/snapshot"
-
-# Where to store database backups.
-db_backups="/var/backups/databases"
-
-# What to backup.
-backup_files="$db_backups /etc/apache2/apache2.conf /etc/apache2/sites-available /etc/dhcp/dhclient.conf /etc/hosts /etc/init.d/noip2 /etc/network/interfaces /etc/systemd/logind.conf /etc/wpa_supplicant/wpa_supplicant.conf /home/adrian /var/lib/quassel /var/log/quassel /var/www/owncloud"
-mysql_databases="owncloud"
-
-# MySQL parameters.
-mysql_user="root"
-mysql_password="Really secure password that no one will ever guess!"
 
 # Set command paths.
 lvcreate=/sbin/lvcreate
@@ -77,14 +79,13 @@ mount -r /dev/mapper/${vg_sub}-home_snapshot ${snap_mount}/home
 mount -r /dev/mapper/${vg_sub}-backups_snapshot ${snap_mount}/var/backups
 
 # Create archive filename.
-date=$(date +%F_%H-%M-%S)
 hostname=$(hostname -s)_
 distro=$(lsb_release -ds | sed s,\ ,_,g)_
 archive_file="$hostname$distro$date.tgz"
 
 # Set GFS destination.
 if [ $mode -eq 1 ]; then
-  echo "  Switching to GFS mode"
+  echo "  Using GFS mode"
   # Determine the appropriate backup destination.
   day_of_year=$(date +%j)
   day_of_month=$(date +%d)
@@ -130,7 +131,7 @@ $lvremove -f ${vg}/root_snapshot
 if [ $mode -eq 1 ]; then
   num_files=$(ls -l $dest | grep ^- | wc -l)
   echo "  $num_files files in $dest"
-  month=$(date +%m)
+  month=$(date +%-m)
   previous_month=$(($month - 1))
   if [ $previous_month -eq 0 ]; then
       previous_month=12
