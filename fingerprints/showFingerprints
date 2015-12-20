@@ -1,0 +1,9 @@
+echo
+echo SSH Fingerprints
+ssh-keygen -l -f /etc/ssh/ssh_host_ecdsa_key
+ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key
+echo
+echo SSL Fingerprints
+openssl x509 -noout -in /etc/ssl/certs/server.crt -fingerprint -md5
+openssl x509 -noout -in /etc/ssl/certs/server.crt -fingerprint -sha1
+echo
